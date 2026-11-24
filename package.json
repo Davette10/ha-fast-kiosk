@@ -1,0 +1,17 @@
+{
+  "name": "ha-fast-kiosk",
+  "version": "1.0.0",
+  "description": "Show a Home Assistant dashboard card on a slow wall tablet or smart display without loading the Home Assistant frontend.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/boot.js --bundle --minify --format=esm --target=chrome90 --legal-comments=eof \"--banner:js=/* ha-fast-kiosk (MIT) https://github.com/Davette10/ha-fast-kiosk. Bundles home-assistant-js-websocket (Apache-2.0), see THIRD_PARTY_NOTICES.md */\" --outfile=dist/boot.js && esbuild src/sw.js --minify --outfile=dist/sw.js && cp src/index.html src/theme.css src/config.example.json src/version.txt dist/"
+  },
+  "dependencies": {
+    "home-assistant-js-websocket": "9.5.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.24.2"
+  }
+}

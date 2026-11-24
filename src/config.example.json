@@ -1,0 +1,11 @@
+{
+  "dashboard": "my-kiosk",
+  "view": "home",
+  "card": 0,
+  "resources": {
+    "include": ["my-kiosk-card", "webrtc-camera"],
+    "exclude": []
+  },
+  "dark_mode": true,
+  "view_assist": true
+}
