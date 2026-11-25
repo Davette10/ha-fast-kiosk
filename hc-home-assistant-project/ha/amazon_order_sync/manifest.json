@@ -1,0 +1,15 @@
+{
+  "domain": "amazon_order_sync",
+  "name": "Amazon Order Sync",
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": [
+    "todo"
+  ],
+  "documentation": "https://amazon-orders.readthedocs.io",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "2.1.0"
+}

@@ -1,0 +1,169 @@
+# Amazon orders: email -> todo.amazon_orders -> os-amazon card.
+# Draft; installed with ha_config_set_automation once the IMAP entry exists.
+# Fill in before installing: IMAP_ENTRY (the IMAP config entry id) and TRASH
+# (iCloud "Deleted Messages", Gmail "[Gmail]/Trash", Outlook "Deleted Items").
+# Needs: a Local To-do list named "Amazon Orders" (todo.amazon_orders) and ai_task.google_ai_task (already used by the package check).
+
+- id: amazon_orders_from_email
+  alias: Amazon orders - read order emails
+  description: >-
+    Turns each Amazon order email (ordered, shipped, out for delivery, delivered, running late,
+    cancelled, refund) into one entry per order in the Amazon Orders list, then moves the email to Trash.
+    Other Amazon emails (deals, recommendations) are left alone in the inbox.
+  mode: queued
+  max: 25
+  triggers:
+    - trigger: event
+      event_type: imap_content
+      event_data:
+        entry_id: IMAP_ENTRY
+  variables:
+    subj: "{{ trigger.event.data.subject | default('') }}"
+    kind: >-
+      {% set s = subj | lower %}
+      {% if s.startswith('delivered') or 'has been delivered' in s or 'was delivered' in s %}delivered
+      {% elif s.startswith('out for delivery') or 'out for delivery' in s %}out
+      {% elif s.startswith('shipped') or 'has shipped' in s or 'is on the way' in s %}shipped
+      {% elif 'running late' in s or 'delayed' in s or 'delivery update' in s %}delayed
+      {% elif s.startswith('cancelled') or s.startswith('canceled') or 'has been cancel' in s %}cancelled
+      {% elif 'refund' in s or s.startswith('return') %}return
+      {% elif s.startswith('ordered') or 'your amazon.com order' in s or 'order confirmation' in s %}ordered
+      {% else %}none{% endif %}
+  conditions:
+    - condition: template
+      value_template: "{{ 'amazon' in (trigger.event.data.sender | default('') | lower) and kind != 'none' }}"
+  actions:
+    - action: imap.fetch
+      data:
+        entry: IMAP_ENTRY
+        uid: "{{ trigger.event.data.uid }}"
+      response_variable: mail
+    - action: ai_task.generate_data
+      data:
+        entity_id: ai_task.google_ai_task
+        task_name: amazon_order_email
+        instructions: >-
+          This is an email from Amazon about an order. Its subject is: {{ subj }}.
+          Extract the facts below. Use an empty string for anything not in the email; never guess.
+          order_number: the Amazon order number, format 123-1234567-1234567.
+          items: the product names in the email, shortened to at most 70 characters each, separated by " || ".
+          image_urls: for each product, its product image URL (https, from m.media-amazon.com or images-amazon.com), in the same order, separated by " || ".
+          arrival_date: the expected or actual delivery date as YYYY-MM-DD (today is {{ now().date() }}).
+          arrival_window: the delivery time window if given, written like "by 10 PM" or "8 AM - 12 PM".
+          total: the order total with currency symbol, like "$24.99".
+          carrier: the delivery company if named (Amazon, UPS, USPS, FedEx...).
+
+          EMAIL:
+          {{ (mail.text | default(''))[:20000] }}
+        structure:
+          order_number: { selector: { text: } }
+          items: { selector: { text: } }
+          image_urls: { selector: { text: } }
+          arrival_date: { selector: { text: } }
+          arrival_window: { selector: { text: } }
+          total: { selector: { text: } }
+          carrier: { selector: { text: } }
+      response_variable: ai
+    - variables:
+        d: "{{ ai.data if ai is defined and ai.data is mapping else {} }}"
+        num: "{{ (d.order_number | default('') | string | trim) }}"
+    - condition: template
+      value_template: "{{ num | regex_match('^\\d{3}-\\d{7}-\\d{7}$') }}"
+    - action: todo.get_items
+      target:
+        entity_id: todo.amazon_orders
+      response_variable: cur
+    - variables:
+        ex: >-
+          {{ cur['todo.amazon_orders']['items'] | selectattr('summary', 'eq', num) | list }}
+        old: >-
+          {{ (ex[0].description | default('{}')) | from_json(default={}) if ex else {} }}
+        rank: { ordered: 1, shipped: 2, delayed: 2, out: 3, delivered: 4, cancelled: 9, return: 9 }
+        new_s: >-
+          {% set o = old.s | default('') %}
+          {% if not o or kind in ['cancelled', 'return'] or rank.get(kind, 0) >= rank.get(o, 0) %}{{ kind }}{% else %}{{ o }}{% endif %}
+        names: "{{ (d['items'] | default('') | string).split(' || ') | map('trim') | reject('eq', '') | list }}"
+        imgs: "{{ (d.image_urls | default('') | string).split(' || ') | map('trim') | list }}"
+        items: >-
+          {% set have = old['items'] | default([]) %}
+          {% set ns = namespace(out = have) %}
+          {% for n in names %}
+            {% if n | lower not in (ns.out | map(attribute='n') | map('lower') | list) %}
+              {% set img = imgs[loop.index0] if imgs | length > loop.index0 else '' %}
+              {% set ns.out = ns.out + [{'n': n[:90], 'img': img if img is match('https://([a-z0-9-]+\\.)*(media-amazon|ssl-images-amazon|images-amazon)\\.com/') else ''}] %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.out[:12] }}
+        eta: >-
+          {% set a = d.arrival_date | default('') | string %}
+          {{ a if a | regex_match('^\\d{4}-\\d{2}-\\d{2}$') else (old.eta | default('')) }}
+        hist: >-
+          {% set h = old.h | default({}) %}
+          {% set ns = namespace(o={}) %}{% for k, v in h.items() %}{% set ns.o = dict(ns.o, **{k: v}) %}{% endfor %}{{ dict(ns.o, **{kind: h.get(kind, now().isoformat())}) }}
+        desc: >-
+          {{ {
+            'items': items,
+            's': new_s,
+            'eta': eta,
+            'eta_txt': (d.arrival_window | default('') | string) or (old.eta_txt | default('')),
+            'total': (d.total | default('') | string) or (old.total | default('')),
+            'carrier': (d.carrier | default('') | string) or (old.carrier | default('')),
+            'h': hist,
+            'upd': now().isoformat()
+          } | to_json }}
+    - if:
+        - condition: template
+          value_template: "{{ ex | length > 0 }}"
+      then:
+        - action: todo.update_item
+          target:
+            entity_id: todo.amazon_orders
+          data: >-
+            {% set x = {'item': ex[0].uid, 'description': desc,
+                        'status': 'completed' if new_s in ['delivered', 'cancelled', 'return'] else 'needs_action'} %}
+            {{ dict(x, due_date=eta) if eta else x }}
+      else:
+        - action: todo.add_item
+          target:
+            entity_id: todo.amazon_orders
+          data: >-
+            {% set x = {'item': num, 'description': desc} %}
+            {{ dict(x, due_date=eta) if eta else x }}
+    # Only after the order is saved: move the email to Trash (recoverable there for ~30 days).
+    - action: imap.move
+      data:
+        entry: IMAP_ENTRY
+        uid: "{{ trigger.event.data.uid }}"
+        seen: true
+        target_folder: TRASH
+
+- id: amazon_orders_tidy
+  alias: Amazon orders - tidy old deliveries
+  description: Removes delivered, cancelled and refunded orders from the list 7 days after their last update.
+  mode: single
+  triggers:
+    - trigger: time
+      at: "03:40:00"
+  actions:
+    - action: todo.get_items
+      target:
+        entity_id: todo.amazon_orders
+      data:
+        status: completed
+      response_variable: cur
+    - variables:
+        old_uids: >-
+          {% set ns = namespace(u=[]) %}
+          {% for it in cur['todo.amazon_orders']['items'] %}
+            {% set j = (it.description | default('{}')) | from_json(default={}) %}
+            {% set t = as_datetime(j.upd | default('')) %}
+            {% if t and now() - t > timedelta(days=7) %}{% set ns.u = ns.u + [it.uid] %}{% endif %}
+          {% endfor %}
+          {{ ns.u }}
+    - condition: template
+      value_template: "{{ old_uids | length > 0 }}"
+    - action: todo.remove_item
+      target:
+        entity_id: todo.amazon_orders
+      data:
+        item: "{{ old_uids }}"

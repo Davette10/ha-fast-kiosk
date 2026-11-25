@@ -1,0 +1,62 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Sign in to Amazon",
+        "description": "The Amazon helper on your Zima box signs in with a real hidden browser and reads your Your Orders page now and then (one page, last 30 days), so the Orders screen shows exact product names and photos. What you type here is passed once to that helper and kept only on Zima; Home Assistant keeps just a pairing key.\n\nAuthenticator key: the text key Amazon shows when you add an authenticator app (Login & security > 2-Step Verification > Add new app > \"Can't scan the barcode?\"). With it, the helper can sign in again by itself. Leave it empty to type a 6-digit code instead.\n\n{detail}",
+        "data": {
+          "helper_url": "Amazon helper address (on Zima)",
+          "username": "Amazon email or phone",
+          "password": "Amazon password",
+          "otp_secret": "Authenticator key (optional)",
+          "otp_code": "6-digit code (only if you left the key empty)",
+          "todo_entity": "Orders list"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in to Amazon again",
+        "description": "Amazon asked to confirm the sign-in for {account}. Fill in only what changed: with an authenticator key saved you can just press Submit; without one, type the current 6-digit code.\n\n{detail}",
+        "data": {
+          "password": "New Amazon password (leave empty to keep)",
+          "otp_secret": "New authenticator key (leave empty to keep)",
+          "otp_code": "6-digit code"
+        }
+      }
+    },
+    "error": {
+      "need_code": "Amazon asked for a code. Add your authenticator key, or type the current 6-digit code from your authenticator app, and submit again.",
+      "captcha": "Amazon showed a picture puzzle (it does this when a sign-in looks unusual). Sign in to amazon.com once in a browser on your home network, wait an hour, then try again.",
+      "device": "Amazon asked where to send a code by text or email. Set up an authenticator app in Amazon's 2-Step Verification settings, then try again with its key.",
+      "challenge": "Amazon asked for an extra check the helper couldn't pass. Wait an hour, then try again.",
+      "auth": "Amazon didn't sign in. If you're sure the email and password are right, Amazon may be blocking automated sign-ins; the message below says what Amazon reported.",
+      "cannot_connect": "Couldn't reach Amazon. Try again in a few minutes.",
+      "unknown": "Something unexpected went wrong. Check Settings > System > Logs for amazon_order_sync.",
+      "no_helper": "Couldn't reach the Amazon helper on Zima. Check it's running (docker ps) and the address is right.",
+      "not_paired": "The Amazon helper is already paired with another setup. On Zima, delete /DATA/AppData/amazon-helper/data/token and try again."
+    },
+    "abort": {
+      "already_configured": "This Amazon account is already set up.",
+      "reauth_successful": "Signed in again. Order checks have resumed.",
+      "reconfigure_successful": "Saved. Order checks have resumed."
+    }
+  },
+  "services": {
+    "refresh": {
+      "name": "Check Your Orders now",
+      "description": "Reads your Your Orders page once (never more than once per 20 minutes) and updates the Amazon Orders list."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "waiting": "Waiting",
+          "ok": "Working",
+          "error": "Problem (will retry later)",
+          "needs_sign_in": "Needs sign-in"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Weather radar + Media page fixes
+- **Radar showed Brazil:** HA's own global Leaflet (shared with the family map) asked for fractional-zoom tiles like `7.5/71/50`, which Esri served from the wrong place.
+  - **Fix (in `2843407bf2c844efa3fb6b450c7ac19f`):** os-radar now loads its own private Leaflet 1.9.4 from cdnjs, puts the old `window.L` back, and keeps its copy in `window.__osRadarL`. The map uses `zoomSnap: 1` and a whole-number zoom. Basemap and labels are Esri Canvas World_Light/Dark_Gray Base + Reference (`maxZoom: 16`), picked from `data-os-mode`.
+  - Verified with Puppet: North Carolina, Raleigh home dot, radar frames animating.
+- **Media page:** playback works (tested on `media_player.voice_pe_music` only). The Music Assistant library has 0 tracks because the ZimaOS share isn't mounted (Supervisor mounts are empty).
+  - **Fix (in `a71b7d352f0b497882e65211c2afae02`):** when the library is empty, Playlists/Albums/Artists/Songs show "Your music library is offline" with a "Listen to Radio" button. The Radio tab shows saved stations first, then fills up to 30 from Radio Browser searches (NPR, classic rock, top 40, country, jazz, classical, 80s, lofi).
+  - **To get the library back (user step):** Settings → System → Storage → Add network storage (Music, CIFS, the Zima share; the user types the credentials). The HA VM can't reach its ZimaOS host on the LAN IP, so the Zima's Tailscale IP may be needed. Then rescan in Music Assistant.
+- **Puppet now works:** `ha_get_dashboard_screenshot` is the way to check the UI (the user asked not to use the browser pane). The older "Puppet not installed" note below is out of date.
+
+## Map tab + person pages rebuilt (Oct 12, 2026, after HA core 2026.10.1)
+- **What broke:** HA 2026.10 rewrote its map card (`ha-map` now has an engine layer, its own `/api/map_tiles` OSM tiles, and no `leafletMap` / `Leaflet` properties). The trail code in os-v3 (`mapReady` waits for `hm.leafletMap && hm.Leaflet`) never found the map, so no trails and no fit. Markers showed letters because `person.*` entities have no `entity_picture` (person pictures are null); the faces in the list come from the Life360 tracker's `entity_picture`.
+- **Fix:** new inline resource **os-map** (`951a9b8cecbd4b0d9a93e2f27ae1b83d`, source `os-map.js`). It defines `os-leaflet-map` (private Leaflet 1.9.4, shared with the radar via `window.__osRadarL`) and locks `_mountMap` on `os-family-map` and `os-person-page` (accessor, so the older os-v3 / os-fixes patches can't overwrite it; already-mounted HA cards are swapped out at 0 / 1.5 / 4 s).
+  - Markers (user preferred HA's original pin look, Oct 12): white rounded bubble (graphite at night) with a pointer and a family-colour location dot; inside, a rounded-square photo (tracker picture, else initial) with a family-colour border. People within 64 px share one bubble with photos side by side (like HA's grouped "H L H" pin); tapping a face opens that person's page. Unavailable people are greyed.
+  - Trails: history per person, family colour over a white (light) / black (dark) casing; refresh every 2 min; Now / Today / 3 Days / Week still work.
+  - Basemap: Esri Canvas Light/Dark Gray Base + Reference (CARTO basemaps now return "API key required"); follows `data-os-mode`. Home shown as a small house pin. Recenter button bottom-right.
+- Deployed copy matches `Desktop/ha/os-modules/os-map.js` (17,882 bytes).
+- **Puppet tip:** Puppet keeps its page alive, so a changed resource may not reload. Capturing a different dashboard (e.g. `mobile-dashboard`) forces a fresh load.
+
+## Place names (Oct 12, 2026)
+- New inline resource **os-places** (`e1a0c86c12f54116bfe5e67ac3393ebd`, source `Desktop/ha/os-modules/os-places.js`, 13,226 bytes). API `window.__osPlaces.lookup(lat, lon, acc)` → `{name, label, icon, color, poi}`, `undefined` while looking, `null` if nothing.
+- Lookup: Photon reverse (`photon.komoot.io`, OpenStreetMap; CORS ok) within 150 m, picks the nearest named shop/amenity/leisure/etc. (area extents count as "inside"), falls back to "Near <house number + street>" or "Near <street>". One request at a time, 1.2 s apart; cached per screen in localStorage `os-places-v1` (reused within 30 m, 30 days). Only looked up while someone is `not_home`, not driving, and not Unavailable.
+- Shows on: Map tab rows ("Target · since 2:10 PM" + category pill: Gas, Groceries, Eating, Café, Shopping, School, Church, Health, Park, Sports, Errand...), person page hero ("At Target"), and Places today (now real stops from today's history: zones plus named stops ≥5 min, newest first). Home-page person rows (button-card `os_person_row`) are unchanged.
+- Overpass (overpass-api.de) is blocked from Claude's cloud workspace, so analysis there uses Photon + Nominatim.
+- Frequent unsaved places list: `claude/frequent-places.md`.

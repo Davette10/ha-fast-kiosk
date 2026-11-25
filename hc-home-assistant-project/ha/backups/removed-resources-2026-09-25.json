@@ -1,0 +1,40 @@
+{
+ "note": "Lovelace resources removed on 2026-09-25 because no dashboard used them. To restore one: Settings > Dashboards > Resources > Add resource, paste the url, type module.",
+ "removed": [
+  {
+   "id": "eaba8a13342140e0b31f4e0697b89e7f",
+   "type": "module",
+   "url": "/hacsfiles/config-template-card/config-template-card.js?hacstag=172177543136"
+  },
+  {
+   "id": "6a2c2a8440ee4757ae74235774db29ee",
+   "type": "module",
+   "url": "/hacsfiles/mini-graph-card/mini-graph-card-bundle.js?hacstag=1512800620130"
+  },
+  {
+   "id": "a47578106cd844fa9976f2c075f374a8",
+   "type": "module",
+   "url": "/hacsfiles/vertical-stack-in-card/vertical-stack-in-card.js?hacstag=142051833112"
+  },
+  {
+   "id": "0d4c5303398c460b926b645ebba80eb4",
+   "type": "module",
+   "url": "/hacsfiles/lovelace-hourly-weather/hourly-weather.js?hacstag=499270202711"
+  },
+  {
+   "id": "8f0a25382dbe4025ab340258b3d3a305",
+   "type": "module",
+   "url": "/hacsfiles/week-planner-card/week-planner-card.js?hacstag=7717287661141"
+  },
+  {
+   "id": "a3e333085dd94577ae5b429822f78636",
+   "type": "module",
+   "url": "/hacsfiles/alarmo-card/alarmo-card.js?hacstag=391372854169"
+  },
+  {
+   "id": "d27e1b4165e54226a3fb0aa78c924336",
+   "type": "module",
+   "url": "/hacsfiles/ha-map-card/map-card.js?hacstag=7348254571160"
+  }
+ ]
+}

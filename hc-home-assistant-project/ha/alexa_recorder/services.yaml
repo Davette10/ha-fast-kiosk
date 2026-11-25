@@ -1,0 +1,27 @@
+add_notes:
+  name: Add review notes
+  description: Save review notes for one turn of a recorded Alexa conversation.
+  fields:
+    folder:
+      name: Folder
+      description: Conversation folder from the alexa_recorder_turn_saved event.
+      required: true
+      selector:
+        text:
+    turn:
+      name: Turn
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 99
+    score:
+      name: Score
+      selector:
+        number:
+          min: 0
+          max: 10
+    notes:
+      name: Notes
+      selector:
+        object:

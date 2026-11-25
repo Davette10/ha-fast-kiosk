@@ -1,0 +1,37 @@
+{
+  "note": "Media page before the Spotify-style os-music rebuild (Oct 13, 2026). To roll back: in both dashboards set the body card type back to custom:os-media-app (config below). The old module (resource a71b7d352f0b497882e65211c2afae02, source os-modules/os-media-app.js) was left installed.",
+  "locations": {
+    "claude-test-dashboard": "views[5] (path media) .cards[0].custom_fields.body.card",
+    "mobile-dashboard": "views[4] (path media) .cards[0].custom_fields.body.card"
+  },
+  "card": {
+    "type": "custom:os-media-app",
+    "config_entry_id": "01M1N1ZBPT9P4JRBBR5JG13M2J",
+    "default_player": "media_player.living_room_2",
+    "names": {
+      "media_player.living_room_2": "Living Room",
+      "media_player.harpers_imac": "Harper's iMac",
+      "media_player.voice_pe_music": "Voice Assistant"
+    },
+    "icons": {
+      "media_player.harpers_imac": "mdi:laptop",
+      "media_player.voice_pe_music": "mdi:microphone-outline"
+    },
+    "groups": [
+      {"title": "Alexa", "kind": "alexa", "icon": "mdi:speaker", "entities": [
+        {"entity": "media_player.everywhere_2", "name": "Everywhere", "icon": "mdi:speaker-multiple"},
+        {"entity": "media_player.kitchen_2", "name": "Kitchen"},
+        {"entity": "media_player.downstairs_2", "name": "Downstairs"},
+        {"entity": "media_player.harper_echo_dot_2", "name": "Harper's Room"},
+        {"entity": "media_player.lauren_2", "name": "Lauren's Room"},
+        {"entity": "media_player.the_parents_bedroom_2", "name": "Parents' Room"},
+        {"entity": "media_player.hayden_s_echo_show_2", "name": "Hayden's Room"}
+      ]},
+      {"title": "TVs", "kind": "tv", "icon": "mdi:television", "entities": [
+        {"entity": "media_player.living_room", "name": "Living Room TV"},
+        {"entity": "media_player.hayden_s_tv", "name": "Hayden's TV"},
+        {"entity": "media_player.jill_s_tv", "name": "Jill's TV"}
+      ]}
+    ]
+  }
+}

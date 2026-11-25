@@ -1,0 +1,6 @@
+# Dynamic island detail cards + doorbell live view (deployed Nov 15)
+
+- Module `os-echo-glance.js` (resource `2230504843a142ff9a114b62729c9a56`, hash `87d0dbe0…`; project copy `claude/os-echo-glance.js`). Patches `os-echo` from outside because os-echo.js is at the 128 KB limit (os-echo resource `9347e79764e44f0fafd26fd239d93056`, hash `25ff2cb1…`, 127,611 bytes — put new features in separate modules).
+- Tap the resting island → expands in place (mode `gx`, 25 s, dimmed): weather (now, H/L, humidity/wind, 5 days with rain %, sunrise/sunset, "Full forecast and radar"), packages (from `todo.amazon_orders` JSON descriptions, Amazon CDN images only), next 5 events, music (art, progress, prev/play/next). Each card has an open button (`data-gxo`).
+- Doorbell: motion or ring → island becomes front-door live view (`e._live(d.live, d.rtsp)`), red LIVE dot, orange outline + chime on ring. Motion only on resting home screen; ring shows over anything except ring/vision/looking/snap or the camera panel. Collapses 30 s after clear. Tap → `_open("cam",{cam:"front_door",auto:90})`. Replaced the old auto-open of the camera screen on a ring.
+- Also holds the `_vSnd` override and `_setVol` wrapper (see 02).

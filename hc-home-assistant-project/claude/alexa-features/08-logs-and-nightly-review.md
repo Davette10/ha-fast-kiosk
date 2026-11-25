@@ -1,0 +1,18 @@
+# Logs and the nightly review
+
+## Logs that exist today
+- HA: system log / error_log (`ha_get_logs`), logbook, history, automation/script traces, pipeline debug (last ~10 runs).
+- Recorder `alexa_recorder`: `/media/alexa_log/conversations/<date>/<time>_<device>/` (user wav, conversation wav, screenshot; turn JSON not always present), `/media/alexa_log/index.jsonl`. Browse via `media_source/browse_media`; download from the Zima with the signed URL from `resolve_media`.
+- To-do lists: `todo.alexa_activity` (one item per activation; summaries like "ignored · not for Alexa · Thank you.", "6/10 · voice · …", "not reviewed · voice · …"), `todo.alexa_improvements` (score ≤7), `todo.alexa_feedback` (complaints), `todo.alexa_memory`, `todo.alexa_phrases`.
+- Android: `adb logcat` — ring buffers only 256 KB and flooded by VACA `WyomingTCPServer Sending -> … type=info/capabilities` every 30 s (~6 KB each), so history is lost within minutes. Useful tags: `ViewAssistCA` (screen wake locks), `PowerManagerService` (wake/sleep), `chromium` (WebView console), events `screen_toggled`.
+
+## Review bot (Zima `/DATA/home/Harper/alexa-review`)
+- `run.sh` runs `claude -p "$(cat review-prompt.md)"` (lock `state/running.lock`, retries once after 40 min on usage limit). `CLAUDE.md` there has the bot's rules. Reports in `reports/`, `CHANGELOG.md`, logs in `logs/`.
+- Timer `alexa-review.timer`: Tue/Thu/Sat 03:00 UTC (system unit; changing it needs Owen's sudo). Last run Nov 14.
+- `trigger.py` (port 8766, systemd Restart=always; reload by killing its pid): POST `/start`, `/status` (key header, HA IP only), GET `/shot.png|/shot.jpg?k=`. HA side: `rest_command.alexa_review` with templated path `{{ action }}` (confirmed `status?probe=1` works) and `script.alexa_review` (start/status).
+
+## Nov 16 requirements — reported BUILT in another chat (verify live; the plan below is what was intended)
+1. **Read ALL Alexa logs incl. Android:** collector `alexa-logs/collect.py` on the Zima: `adb logcat -G 4M`, stream `logcat -b main,system,crash,events -v threadtime,year -T <last>`, drop the Wyoming info/capabilities spam, write `logs/android/YYYY-MM-DD.log`, keep 14 days, reconnect on drop. Supervise it from trigger.py (thread restarts it) to avoid needing sudo. `summarize.py --since` → markdown digest: E/F counts by tag + normalised message, crashes (FATAL EXCEPTION, ANR, Fatal signal), WebView console errors, screen wake/sleep reasons, wake-word lines; JSON with NEW error signatures vs `known-signatures.json`.
+2. **Errors found go on the fix list** (`todo.alexa_improvements`) — HA system-log errors and Android digest errors, reviewed nightly.
+3. **Nightly at 3 AM (New York) with a skip gate:** HA automation at 03:00 computes counts (open complaints, open improvements, activity items scored ≤7 or "not reviewed", accidental activations that got answered/acted, ≥5 ignored wakes) and calls `rest_command.alexa_review` action `nightly?fb=..&imp=..&low=..&acc=..&ign=..`. New trigger.py `/nightly` combines that with the Android digest (new error signatures/crashes) → start run.sh (REVIEW_SOURCE=nightly + reasons) or write a "skipped, nothing worth reviewing" line to the report. Make run.sh exit when started by the old timer (empty REVIEW_SOURCE) so no sudo is needed.
+4. **Review prompt additions (`review-prompt.md`):** for every activation decide if it was accidental (background TV/video/music vs a person), and whether Alexa continued (answered/acted, or a second wake within ~60 s); list them; propose prompt/sentence/threshold fixes; label activations real/accidental into a dataset for wake tuning; adjust `input_number.alexa_wake_word_threshold_normal` carefully (never above 9.6); add Android/HA errors to the fix list.

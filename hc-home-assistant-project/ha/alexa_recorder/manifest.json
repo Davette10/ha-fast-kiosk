@@ -1,0 +1,15 @@
+{
+  "domain": "alexa_recorder",
+  "name": "Alexa Recorder",
+  "codeowners": [],
+  "dependencies": [
+    "assist_pipeline",
+    "http"
+  ],
+  "documentation": "https://www.home-assistant.io/",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "1.1.0",
+  "config_flow": true,
+  "single_config_entry": true
+}
